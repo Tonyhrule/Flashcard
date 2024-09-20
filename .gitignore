@@ -10,3 +10,5 @@ npm-debug.log*
 # Optional: Ignore operating system files (MacOS and Windows)
 .DS_Store
 Thumbs.db
+questions.txt
+

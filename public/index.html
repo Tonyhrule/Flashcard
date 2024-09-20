@@ -13,7 +13,9 @@
       justify-content: center;
       height: 100vh;
       background-color: #f7f7f7;
+      margin: 0;
     }
+
     #flashcard {
       width: 400px;
       height: 200px;
@@ -27,13 +29,21 @@
       margin: 20px 0;
       background-color: #fff;
       cursor: pointer;
+      transition: transform 0.6s;
+      transform-style: preserve-3d;
     }
+
+    #flashcard.flipped {
+      transform: rotateY(180deg);
+    }
+
     textarea {
       width: 400px;
       height: 100px;
       margin-bottom: 10px;
       padding: 10px;
     }
+
     button {
       padding: 10px 20px;
       margin: 5px;
@@ -43,27 +53,58 @@
       border: none;
       border-radius: 5px;
     }
+
     #loading {
       display: none;
       margin: 20px;
       font-size: 18px;
       color: #007bff;
     }
+
+    #progress {
+      margin-bottom: 20px;
+      font-size: 18px;
+    }
+
+    @media (max-width: 600px) {
+      #flashcard {
+        width: 90%;
+        font-size: 20px;
+      }
+
+      textarea {
+        width: 90%;
+      }
+    }
+
+    body.dark-mode {
+      background-color: #333;
+      color: #fff;
+    }
+
+    body.dark-mode #flashcard {
+      background-color: #555;
+      color: #fff;
+    }
   </style>
 </head>
 <body>
 
   <h1>AI-Powered Flashcard Generator</h1>
-  <textarea id="textInput" placeholder="Enter questions and answers in the format: Q: Question A: Answer"></textarea><br>
+
+  <textarea id="textInput" placeholder="Enter: Q: Question A: Answer (One question per line)"></textarea><br>
   <button onclick="generateFlashcards()">Generate Flashcards</button>
 
   <div id="loading">Loading flashcards, please wait...</div>
-
-  <div id="flashcard">Click to see answer</div>
+  <div id="progress"></div>
+  
+  <div id="flashcard" onclick="flipFlashcard()">Click to flip</div>
 
   <div>
     <button onclick="prevCard()">Previous</button>
     <button onclick="nextCard()">Next</button>
+    <button onclick="downloadFlashcards()">Download</button>
+    <button onclick="toggleDarkMode()">Toggle Dark Mode</button>
   </div>
 
   <script>
@@ -72,9 +113,14 @@
     let showingQuestion = true;
 
     async function generateFlashcards() {
-      const textInput = document.getElementById("textInput").value;
+      const textInput = document.getElementById("textInput").value.trim();
       const flashcardDiv = document.getElementById("flashcard");
       const loadingDiv = document.getElementById("loading");
+
+      if (!textInput) {
+        alert('Please enter some text in the input box.');
+        return;
+      }
 
       // Show loading message
       loadingDiv.style.display = 'block';
@@ -91,10 +137,13 @@
         });
 
         const data = await response.json();
-        flashcards = data.flashcards.map(item => {
-          const [question, answer] = item.split('A:').map(part => part.trim());
-          return { question, answer };
-        });
+
+        // Ensure flashcards exist and are well-formed
+        if (data.flashcards.length === 0) {
+          throw new Error('No flashcards generated.');
+        }
+
+        flashcards = data.flashcards;
 
         if (flashcards.length > 0) {
           currentCardIndex = 0;
@@ -113,8 +162,16 @@
 
     function displayFlashcard() {
       const flashcard = document.getElementById("flashcard");
+      const progress = document.getElementById("progress");
+
+      if (!flashcards[currentCardIndex]) {
+        flashcard.textContent = 'No flashcards available.';
+        return;
+      }
+
       const cardContent = showingQuestion ? flashcards[currentCardIndex].question : flashcards[currentCardIndex].answer;
       flashcard.textContent = cardContent;
+      progress.textContent = `Card ${currentCardIndex + 1} of ${flashcards.length}`;
     }
 
     function flipFlashcard() {
@@ -137,6 +194,25 @@
         displayFlashcard();
       }
     }
+
+    function downloadFlashcards() {
+      const flashcardData = flashcards.map(card => ({ question: card.question, answer: card.answer }));
+      const blob = new Blob([JSON.stringify(flashcardData, null, 2)], { type: 'application/json' });
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = 'flashcards.json';
+      link.click();
+    }
+
+    function toggleDarkMode() {
+      document.body.classList.toggle('dark-mode');
+    }
+
+    document.addEventListener('keydown', (event) => {
+      if (event.key === 'ArrowRight') nextCard();
+      if (event.key === 'ArrowLeft') prevCard();
+      if (event.key === 'Enter') flipFlashcard();
+    });
   </script>
 
 </body>

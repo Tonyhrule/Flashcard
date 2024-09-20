@@ -10,38 +10,81 @@ app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
-
 const OPENAI_API_URL = 'https://api.openai.com/v1/chat/completions';
+
+// Helper function to split input into smaller chunks
+function splitInputText(inputText, maxLength) {
+  const parts = inputText.match(new RegExp(`.{1,${maxLength}}`, 'g'));
+  return parts || [inputText];
+}
 
 // Function to call OpenAI API using the Chat API
 async function getProcessedFlashcards(inputText) {
   try {
-    const response = await axios.post(
-      OPENAI_API_URL,
-      {
-        model: 'gpt-4', // or use 'gpt-3.5-turbo'
-        messages: [
-          {
-            role: 'system',
-            content: 'You are an assistant that formats questions and answers into flashcards.',
-          },
-          {
-            role: 'user',
-            content: `Here is a long text with questions and answers. Extract and format the questions and answers: ${inputText}`,
-          }
-        ],
-        max_tokens: 500,
-        temperature: 0.5,
-      },
-      {
-        headers: {
-          'Authorization': `Bearer ${OPENAI_API_KEY}`,
-          'Content-Type': 'application/json',
+    // Split the input text into smaller chunks
+    const inputChunks = splitInputText(inputText, 1500); // Shorter chunks
+
+    let flashcards = [];
+
+    for (let chunk of inputChunks) {
+      const response = await axios.post(
+        OPENAI_API_URL,
+        {
+          model: 'gpt-4',
+          messages: [
+            {
+              role: 'system',
+              content: 'You are an assistant that formats text into clear question and answer flashcards. Each question is paired with a corresponding answer. No other labels like "Flashcard" should be included. Just use plain "Question" and "Answer."',
+            },
+            {
+              role: 'user',
+              content: `Here is a long text with questions and answers. Extract and format the questions and answers: ${chunk}`,
+            }
+          ],
+          max_tokens: 500,
+          temperature: 0.5,
         },
+        {
+          headers: {
+            'Authorization': `Bearer ${OPENAI_API_KEY}`,
+            'Content-Type': 'application/json',
+          },
+        }
+      );
+
+      // Log the raw response for debugging
+      console.log('Raw API Response:', response.data.choices[0].message.content);
+
+      const processedText = response.data.choices[0].message.content.trim();
+      const lines = processedText.split('\n').filter(line => line.trim() !== '');
+
+      if (lines.length < 2) {
+        console.warn('Skipping chunk due to insufficient data.');
+        continue;
       }
-    );
-    const processedText = response.data.choices[0].message.content.trim();
-    return processedText.split('\n').filter(line => line.trim() !== ''); // Return non-empty lines
+
+      // Group questions and answers and validate pairs
+      for (let i = 0; i < lines.length; i++) {
+        const question = lines[i].startsWith('Question:') ? lines[i].replace('Question:', '').trim() : null;
+        const answer = lines[i + 1] && lines[i + 1].startsWith('Answer:') ? lines[i + 1].replace('Answer:', '').trim() : null;
+
+        // Ensure the next line is an answer
+        if (question && answer) {
+          flashcards.push({ question, answer });
+          i++; // Skip the next line since it's already processed
+        } else if (question && !answer) {
+          console.warn(`Skipping unmatched question: ${question}`);
+        } else if (answer && !question) {
+          console.warn(`Skipping unmatched answer: ${answer}`);
+        }
+      }
+    }
+
+    if (flashcards.length === 0) {
+      throw new Error('No flashcards could be generated.');
+    }
+
+    return flashcards;
   } catch (error) {
     console.error('Error calling OpenAI API:', error.response?.data || error.message);
     throw new Error('Failed to process text.');
@@ -55,6 +98,7 @@ app.post('/generate-flashcards', async (req, res) => {
     const flashcards = await getProcessedFlashcards(inputText);
     res.json({ flashcards });
   } catch (error) {
+    console.error('Error generating flashcards:', error.message);
     res.status(500).json({ error: error.message });
   }
 });
