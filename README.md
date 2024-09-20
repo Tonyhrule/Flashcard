@@ -16,23 +16,23 @@ This is a web application that generates flashcards using AI. Users can input qu
 
 ## Installation
 
-# 1. Clone this repository:
+### 1. Clone this repository:
 - git clone [https://github.com/your-repo/ai-flashcard-generator.git](https://github.com/Tonyhrule/Flashcard)
 - cd flashcard
 
-# 2. Install the dependencies:
+### 2. Install the dependencies:
 - npm install
 
-# 3. Set up your OpenAI API key:
+### 3. Set up your OpenAI API key:
 - Create a `.env` file in the project root directory and add your API key:
 - OPENAI_API_KEY=your_openai_api_key_here
 
 ## Running the Application
 
-# 1. Start the server:
+### 1. Start the server:
 - node server.js
 
-# 2. Open the app:
+### 2. Open the app:
 - Open the `index.html` file in your web browser.
 
 ## Usage
