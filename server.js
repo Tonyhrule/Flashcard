@@ -6,22 +6,18 @@ const path = require('path');
 const app = express();
 app.use(express.json());
 
-// Serve static files from the "public" directory
 app.use(express.static(path.join(__dirname, 'public')));
 
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
 const OPENAI_API_URL = 'https://api.openai.com/v1/chat/completions';
 
-// Helper function to split input into smaller chunks
 function splitInputText(inputText, maxLength) {
   const parts = inputText.match(new RegExp(`.{1,${maxLength}}`, 'g'));
   return parts || [inputText];
 }
 
-// Function to call OpenAI API using the Chat API
 async function getProcessedFlashcards(inputText) {
   try {
-    // Split the input text into smaller chunks
     const inputChunks = splitInputText(inputText, 1500); // Shorter chunks
 
     let flashcards = [];
@@ -68,7 +64,6 @@ async function getProcessedFlashcards(inputText) {
         const question = lines[i].startsWith('Question:') ? lines[i].replace('Question:', '').trim() : null;
         const answer = lines[i + 1] && lines[i + 1].startsWith('Answer:') ? lines[i + 1].replace('Answer:', '').trim() : null;
 
-        // Ensure the next line is an answer
         if (question && answer) {
           flashcards.push({ question, answer });
           i++; // Skip the next line since it's already processed
