@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Flashcard Generator with AI</title>
+  <title>AI-Powered Flashcard Generator</title>
   <style>
     body {
       font-family: Arial, sans-serif;
@@ -43,6 +43,12 @@
       border: none;
       border-radius: 5px;
     }
+    #loading {
+      display: none;
+      margin: 20px;
+      font-size: 18px;
+      color: #007bff;
+    }
   </style>
 </head>
 <body>
@@ -50,6 +56,8 @@
   <h1>AI-Powered Flashcard Generator</h1>
   <textarea id="textInput" placeholder="Enter questions and answers in the format: Q: Question A: Answer"></textarea><br>
   <button onclick="generateFlashcards()">Generate Flashcards</button>
+
+  <div id="loading">Loading flashcards, please wait...</div>
 
   <div id="flashcard">Click to see answer</div>
 
@@ -65,26 +73,41 @@
 
     async function generateFlashcards() {
       const textInput = document.getElementById("textInput").value;
+      const flashcardDiv = document.getElementById("flashcard");
+      const loadingDiv = document.getElementById("loading");
 
-      // Call the backend to process the text via OpenAI API
-      const response = await fetch('/generate-flashcards', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ inputText: textInput })
-      });
+      // Show loading message
+      loadingDiv.style.display = 'block';
+      flashcardDiv.style.display = 'none'; // Hide flashcards while loading
 
-      const data = await response.json();
-      flashcards = data.flashcards.map(item => {
-        const [question, answer] = item.split('A:').map(part => part.trim());
-        return { question, answer };
-      });
+      try {
+        // Call the backend to process the text via OpenAI API
+        const response = await fetch('/generate-flashcards', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ inputText: textInput })
+        });
 
-      if (flashcards.length > 0) {
-        currentCardIndex = 0;
-        showingQuestion = true;
-        displayFlashcard();
+        const data = await response.json();
+        flashcards = data.flashcards.map(item => {
+          const [question, answer] = item.split('A:').map(part => part.trim());
+          return { question, answer };
+        });
+
+        if (flashcards.length > 0) {
+          currentCardIndex = 0;
+          showingQuestion = true;
+          displayFlashcard();
+        }
+
+      } catch (error) {
+        flashcardDiv.textContent = 'Error generating flashcards. Please try again.';
+      } finally {
+        // Hide loading message and show flashcards after loading
+        loadingDiv.style.display = 'none';
+        flashcardDiv.style.display = 'flex';
       }
     }
 
@@ -102,7 +125,7 @@
     function nextCard() {
       if (currentCardIndex < flashcards.length - 1) {
         currentCardIndex++;
-        showingQuestion = true;
+        showingQuestion = true; // Reset to question when moving to next card
         displayFlashcard();
       }
     }
@@ -110,7 +133,7 @@
     function prevCard() {
       if (currentCardIndex > 0) {
         currentCardIndex--;
-        showingQuestion = true;
+        showingQuestion = true; // Reset to question when moving to previous card
         displayFlashcard();
       }
     }
