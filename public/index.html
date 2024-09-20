@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Flashcard Generator with AI</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      background-color: #f7f7f7;
+    }
+    #flashcard {
+      width: 400px;
+      height: 200px;
+      border: 2px solid #333;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 24px;
+      text-align: center;
+      padding: 20px;
+      margin: 20px 0;
+      background-color: #fff;
+      cursor: pointer;
+    }
+    textarea {
+      width: 400px;
+      height: 100px;
+      margin-bottom: 10px;
+      padding: 10px;
+    }
+    button {
+      padding: 10px 20px;
+      margin: 5px;
+      cursor: pointer;
+      background-color: #007bff;
+      color: #fff;
+      border: none;
+      border-radius: 5px;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>AI-Powered Flashcard Generator</h1>
+  <textarea id="textInput" placeholder="Enter questions and answers in the format: Q: Question A: Answer"></textarea><br>
+  <button onclick="generateFlashcards()">Generate Flashcards</button>
+
+  <div id="flashcard">Click to see answer</div>
+
+  <div>
+    <button onclick="prevCard()">Previous</button>
+    <button onclick="nextCard()">Next</button>
+  </div>
+
+  <script>
+    let flashcards = [];
+    let currentCardIndex = 0;
+    let showingQuestion = true;
+
+    async function generateFlashcards() {
+      const textInput = document.getElementById("textInput").value;
+
+      // Call the backend to process the text via OpenAI API
+      const response = await fetch('/generate-flashcards', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ inputText: textInput })
+      });
+
+      const data = await response.json();
+      flashcards = data.flashcards.map(item => {
+        const [question, answer] = item.split('A:').map(part => part.trim());
+        return { question, answer };
+      });
+
+      if (flashcards.length > 0) {
+        currentCardIndex = 0;
+        showingQuestion = true;
+        displayFlashcard();
+      }
+    }
+
+    function displayFlashcard() {
+      const flashcard = document.getElementById("flashcard");
+      const cardContent = showingQuestion ? flashcards[currentCardIndex].question : flashcards[currentCardIndex].answer;
+      flashcard.textContent = cardContent;
+    }
+
+    function flipFlashcard() {
+      showingQuestion = !showingQuestion;
+      displayFlashcard();
+    }
+
+    function nextCard() {
+      if (currentCardIndex < flashcards.length - 1) {
+        currentCardIndex++;
+        showingQuestion = true;
+        displayFlashcard();
+      }
+    }
+
+    function prevCard() {
+      if (currentCardIndex > 0) {
+        currentCardIndex--;
+        showingQuestion = true;
+        displayFlashcard();
+      }
+    }
+  </script>
+
+</body>
+</html>
